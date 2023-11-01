@@ -121,8 +121,6 @@ from flask_ngrok import run_with_ngrok
 
 # Intialise the app
 app = Flask(__name__)
-# We will run the app using ngrok
-run_with_ngrok(app)
 
 
 #  Create a route on our localmachine
@@ -136,4 +134,4 @@ def recommendations():
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True,host='0.0.0.0')
