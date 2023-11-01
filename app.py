@@ -25,18 +25,6 @@ firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 
-def getTraineesData():
-    trainee_ref = db.collection("trainees").stream()
-    trainees = []
-    for trainee in trainee_ref:
-        formattedData = trainee.to_dict()
-        trainees.append(formattedData)
-    return trainees
-
-
-getTraineesData()
-
-
 def getCVData(userId):
     from google.cloud.firestore_v1.base_query import FieldFilter
 
@@ -48,9 +36,6 @@ def getCVData(userId):
     return cvs[0]
 
 
-getCVData("b1913331")
-
-
 def getCVsData():
     cv_ref = db.collection("cvs").stream()
     cvs = []
@@ -58,9 +43,6 @@ def getCVsData():
         formattedData = cv.to_dict()
         cvs.append(formattedData)
     return cvs
-
-
-getCVsData()
 
 
 def getFirmsData():
@@ -71,8 +53,6 @@ def getFirmsData():
         firms.append(formattedData)
     return firms
 
-
-getFirmsData()
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -91,9 +71,8 @@ tfidf_vectorizer = TfidfVectorizer()
 firm_fields = [preprocess_text(firm["describe"]) for firm in getFirmsData()]
 tfidf_matrix_firms = tfidf_vectorizer.fit_transform(firm_fields)
 
-# Tính độ tương đồng
 
-
+# Tính độ tương đồn
 def calculate_similarity(firm_tfidf, userId):
     cv_skills = preprocess_text(getCVData(userId)["skill"])
     tfidf_matrix_cv = tfidf_vectorizer.transform([cv_skills])
@@ -121,17 +100,20 @@ from flask import Flask, request, jsonify
 # Intialise the app
 app = Flask(__name__)
 
+
 @app.route("/")
 def hello_world():
     return "Hello World!"
+
 
 #  Create a route on our localmachine
 @app.route("/suggest", methods=["POST"])
 def recommendations():
     userId = request.args.get("userId")
     recommended_firms = []
-    for sgf in suggest_firms_user(userId):
-        recommended_firms.append(sgf)
+    if getCVsData()["uid"].contains(userId):
+        for sgf in suggest_firms_user(userId):
+            recommended_firms.append(sgf)
     return jsonify(recommended_firms)
 
 
