@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import firestore
-import pandas as pd
 from flask import Flask, request, jsonify
-
 # Intialise the app
 app = Flask(__name__)
 
@@ -18,6 +12,9 @@ def hello_world():
 #  Create a route on our localmachine
 @app.route("/suggest", methods=["POST"])
 def recommendations():
+    import firebase_admin
+    from firebase_admin import credentials
+    from firebase_admin import firestore
     cred = credentials.Certificate(
         {
             "type": "service_account",
