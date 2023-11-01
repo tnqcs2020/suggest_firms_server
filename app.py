@@ -111,9 +111,10 @@ def hello_world():
 def recommendations():
     userId = request.args.get("userId")
     recommended_firms = []
-    if getCVsData()["uid"].contains(userId):
-        for sgf in suggest_firms_user(userId):
-            recommended_firms.append(sgf)
+    for cv in getCVsData():
+        if cv["uid"] == userId:
+            for sgf in suggest_firms_user(userId):
+                recommended_firms.append(sgf)
     return jsonify(recommended_firms)
 
 
