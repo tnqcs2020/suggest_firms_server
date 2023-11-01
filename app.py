@@ -117,11 +117,13 @@ def suggest_firms_user(userId):
 
 
 from flask import Flask, request, jsonify
-from flask_ngrok import run_with_ngrok
 
 # Intialise the app
 app = Flask(__name__)
 
+@app.route("/")
+def hello_world():
+    return "Hello World!"
 
 #  Create a route on our localmachine
 @app.route("/suggest", methods=["POST"])
@@ -134,4 +136,4 @@ def recommendations():
 
 
 if __name__ == "__main__":
-    app.run(debug=True,host='0.0.0.0')
+    app.run()
