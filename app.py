@@ -71,8 +71,8 @@ def recommendations():
 
     db = firestore.client()
 
-    cv_ref = db.collection("cvs").where(filter=FieldFilter("uid", "==", userId)).get()
-    cv = getCVData(cv_ref)
+    # cv_ref = db.collection("cvs").where(filter=FieldFilter("uid", "==", userId)).get()
+    # cv = getCVData(cv_ref)
 
     cvs_ref = db.collection("cvs").stream()
     cvs = getCVsData(cvs_ref)
@@ -81,26 +81,26 @@ def recommendations():
     firms = getFirmsData(firm_ref)
 
     suggested_firms = []
-    if len(cv) > 0:
-        for cv in cvs:
-            if cv["uid"] == userId:
-                firm_fields = [preprocess_text(firm["describe"]) for firm in firms]
-                tfidf_matrix_firms = tfidf_vectorizer.fit_transform(firm_fields)
+    # if len(cv) > 0:
+    for cv in cvs:
+        if cv["uid"] == userId:
+            firm_fields = [preprocess_text(firm["describe"]) for firm in firms]
+            tfidf_matrix_firms = tfidf_vectorizer.fit_transform(firm_fields)
 
-                cv_skills = preprocess_text(cv["skill"])
-                tfidf_matrix_cv = tfidf_vectorizer.transform([cv_skills])
-                similarity = cosine_similarity(tfidf_matrix_cv, tfidf_matrix_firms)
+            cv_skills = preprocess_text(cv["skill"])
+            tfidf_matrix_cv = tfidf_vectorizer.transform([cv_skills])
+            similarity = cosine_similarity(tfidf_matrix_cv, tfidf_matrix_firms)
 
-                similarity_scores = similarity[0]
-                suggested_firms = [
-                    {
-                        "firmId": firms[i]["firmId"],
-                        "firmName": firms[i]["firmName"],
-                        "similarityScore": similarity_scores[i],
-                    }
-                    for i in range(len(firms))
-                ]
-                suggested_firms.sort(key=lambda x: x["similarityScore"], reverse=True)
+            similarity_scores = similarity[0]
+            suggested_firms = [
+                {
+                    "firmId": firms[i]["firmId"],
+                    "firmName": firms[i]["firmName"],
+                    "similarityScore": similarity_scores[i],
+                }
+                for i in range(len(firms))
+            ]
+            suggested_firms.sort(key=lambda x: x["similarityScore"], reverse=True)
 
     return jsonify(suggested_firms), {"Access-Control-Allow-Origin": "*"}
 
