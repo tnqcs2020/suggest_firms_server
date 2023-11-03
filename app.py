@@ -111,7 +111,7 @@ def recommendations():
         if cv["uid"] == userId:
             for sgf in suggest_firms_user(userId):
                 recommended_firms.append(sgf)
-    return jsonify(recommended_firms)
+    return jsonify(recommended_firms), {"Access-Control-Allow-Origin": "*"}
 
 
 if __name__ == "__main__":
