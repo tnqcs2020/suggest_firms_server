@@ -83,7 +83,7 @@ def recommendations():
     suggested_firms = []
     # if len(cv) > 0:
     for cv in cvs:
-        if cv["uid"] == userId:
+        if cv["userId"] == userId:
             firm_fields = [preprocess_text(firm["describe"]) for firm in firms]
             tfidf_matrix_firms = tfidf_vectorizer.fit_transform(firm_fields)
 
