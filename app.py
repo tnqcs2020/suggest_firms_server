@@ -27,6 +27,7 @@ cred = credentials.Certificate(
 
 firebase_admin.initialize_app(cred)
 
+
 tfidf_vectorizer = TfidfVectorizer()
 
 
@@ -54,10 +55,27 @@ def getFirmsData(firm_ref):
     return firms
 
 
+def readStopWords(fileName):
+    with open(fileName, 'r', encoding='utf-8') as file:
+        stopWords = file.read().splitlines()
+    return stopWords
+
+stopWords = readStopWords("vietnamese-stopwords.txt")
+
+
 def preprocess_text(text):
     text = text.lower()
-    text = "".join(char for char in text if char.isalnum() or char.isspace())
+    text = text.replace(',', '').replace('.', '').replace('(', ' ').replace(')', ' ').split()
+
+    noneStopWords = [word for word in text if word not in stopWords]
+    text = ' '.join(noneStopWords)
+    
     return text
+
+# def preprocess_text(text):
+#     text = text.lower()
+#     text = "".join(char for char in text if char.isalnum() or char.isspace())
+#     return text
 
 
 @app.route("/")
@@ -71,9 +89,6 @@ def recommendations():
 
     db = firestore.client()
 
-    # cv_ref = db.collection("cvs").where(filter=FieldFilter("uid", "==", userId)).get()
-    # cv = getCVData(cv_ref)
-
     cvs_ref = db.collection("cvs").stream()
     cvs = getCVsData(cvs_ref)
 
@@ -81,7 +96,7 @@ def recommendations():
     firms = getFirmsData(firm_ref)
 
     suggested_firms = []
-    # if len(cv) > 0:
+   
     for cv in cvs:
         if cv["userId"] == userId:
             firm_fields = [preprocess_text(firm["describe"]) for firm in firms]
