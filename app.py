@@ -53,13 +53,14 @@ stopWords = readStopWords("vietnamese-stopwords.txt")
 
 def preprocess_text(text):
     import string
+
     translator = str.maketrans("", "", string.punctuation)
     text = text.translate(translator)
 
     text = word_tokenize(text, format="text").lower().split()
 
     noneStopWords = [word for word in text if word not in stopWords]
-    text = ' '.join(noneStopWords)
+    text = " ".join(noneStopWords)
 
     print(text)
     return text
@@ -87,12 +88,12 @@ def recommendations():
     for cv in cvs:
         if cv["userId"] == userId:
             for firm in firms:
-                for job in firm['listJob']:
-                    firm["describe"] = ' '.join([firm["describe"], job['jobName']]) 
+                for job in firm["listJob"]:
+                    firm["describe"] = " ".join([firm["describe"], job["jobName"]])
             firm_fields = [preprocess_text(firm["describe"]) for firm in firms]
             tfidf_matrix_firms = tfidf_vectorizer.fit_transform(firm_fields)
 
-            cv_skills = preprocess_text(cv["skill"])
+            cv_skills = preprocess_text(" ".join([cv["skill"], cv["wish"]]))
             tfidf_matrix_cv = tfidf_vectorizer.transform([cv_skills])
             similarity = cosine_similarity(tfidf_matrix_cv, tfidf_matrix_firms)
 
