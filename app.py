@@ -52,22 +52,16 @@ stopWords = readStopWords("vietnamese-stopwords.txt")
 
 
 def preprocess_text(text):
-    text = word_tokenize(text, format="text")
+    import string
+    translator = str.maketrans("", "", string.punctuation)
+    text = text.translate(translator)
 
-    text = (
-        text.replace(",", "")
-        .replace(".", "")
-        .replace("(", " ")
-        .replace(")", " ")
-        .replace(" - ", " ")
-        .replace("?", " ")
-        .lower()
-        .split()
-    )
+    text = word_tokenize(text, format="text").lower().split()
 
     noneStopWords = [word for word in text if word not in stopWords]
-    text = " ".join(noneStopWords)
+    text = ' '.join(noneStopWords)
 
+    print(text)
     return text
 
 
