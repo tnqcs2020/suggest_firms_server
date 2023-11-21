@@ -92,6 +92,9 @@ def recommendations():
 
     for cv in cvs:
         if cv["userId"] == userId:
+            for firm in firms:
+                for job in firm['listJob']:
+                    firm["describe"] = ' '.join([firm["describe"], job['jobName']]) 
             firm_fields = [preprocess_text(firm["describe"]) for firm in firms]
             tfidf_matrix_firms = tfidf_vectorizer.fit_transform(firm_fields)
 
