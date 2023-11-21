@@ -6,10 +6,11 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from flask import Flask, request, jsonify
+from underthesea import word_tokenize
 
 app = Flask(__name__)
 
-cred = credentials.Certificate('htqltttt-key.json')
+cred = credentials.Certificate("htqltttt-key.json")
 
 firebase_admin.initialize_app(cred)
 
@@ -42,26 +43,32 @@ def getFirmsData(firm_ref):
 
 
 def readStopWords(fileName):
-    with open(fileName, 'r', encoding='utf-8') as file:
+    with open(fileName, "r", encoding="utf-8") as file:
         stopWords = file.read().splitlines()
     return stopWords
+
 
 stopWords = readStopWords("vietnamese-stopwords.txt")
 
 
 def preprocess_text(text):
-    text = text.lower()
-    text = text.replace(',', '').replace('.', '').replace('(', ' ').replace(')', ' ').split()
+    text = word_tokenize(text, format="text")
+
+    text = (
+        text.replace(",", "")
+        .replace(".", "")
+        .replace("(", " ")
+        .replace(")", " ")
+        .replace(" - ", " ")
+        .replace("?", " ")
+        .lower()
+        .split()
+    )
 
     noneStopWords = [word for word in text if word not in stopWords]
-    text = ' '.join(noneStopWords)
-    
-    return text
+    text = " ".join(noneStopWords)
 
-# def preprocess_text(text):
-#     text = text.lower()
-#     text = "".join(char for char in text if char.isalnum() or char.isspace())
-#     return text
+    return text
 
 
 @app.route("/")
@@ -82,7 +89,7 @@ def recommendations():
     firms = getFirmsData(firm_ref)
 
     suggested_firms = []
-   
+
     for cv in cvs:
         if cv["userId"] == userId:
             firm_fields = [preprocess_text(firm["describe"]) for firm in firms]
