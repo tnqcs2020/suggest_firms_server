@@ -1,7 +1,6 @@
 Gunicorn
 underthesea
 nltk
-string
 firebase_admin
 scikit-learn
 pandas
