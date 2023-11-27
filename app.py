@@ -3,10 +3,9 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity, linear_kernel
+from sklearn.metrics.pairwise import linear_kernel
 from flask import Flask, request, jsonify
 from underthesea import word_tokenize
-from sklearn.model_selection import train_test_split
 import string
 from nltk.stem.porter import PorterStemmer
 import numpy as np
@@ -20,12 +19,13 @@ firebase_admin.initialize_app(cred)
 tfidf = TfidfVectorizer(stop_words="english")
 
 
-def getCVData(cv_ref):
-    cvs = []
-    for cv in cv_ref:
-        formattedData = cv.to_dict()
-        cvs.append(formattedData)
-    return cvs
+def readStopWords(fileName):
+    with open(fileName, "r", encoding="utf-8") as file:
+        stopWords = file.read().splitlines()
+    return stopWords
+
+
+stopWords = readStopWords("vietnamese-stopwords.txt")
 
 
 def getCVsData(cvs_ref):
@@ -44,15 +44,6 @@ def getFirmsData(firm_ref):
     return firms
 
 
-def readStopWords(fileName):
-    with open(fileName, "r", encoding="utf-8") as file:
-        stopWords = file.read().splitlines()
-    return stopWords
-
-
-stopWords = readStopWords("vietnamese-stopwords.txt")
-
-
 def preprocess_text(text):
     translator = str.maketrans("", "", string.punctuation)
     text = text.translate(translator)
@@ -61,7 +52,7 @@ def preprocess_text(text):
     text = word_tokenize(text, format="text").lower().split()
 
     noneStopWords = [word for word in text if word not in stopWords]
-    text = " ".join(noneStopWords)
+    text = ' '.join(noneStopWords)
     return text
 
 
@@ -74,10 +65,10 @@ ps = PorterStemmer()
 
 
 def stem(text):
-    y = []
+    y= []
     for i in text.split():
         y.append(ps.stem(i))
-    return " ".join(y)
+    return ' '.join(y)
 
 
 @app.route("/")
@@ -113,7 +104,6 @@ def recommendations():
     )
     firms_df = preprocess_dataframe(firm_data, "tags")
     firms_df["tags"] = firms_df["tags"].apply(stem)
-    firms_df
 
     cvs_df = pd.DataFrame(
         {
@@ -122,7 +112,6 @@ def recommendations():
         }
     )
     cvs_df = preprocess_dataframe(cvs_df, "tags")
-    cvs_df
 
     firms_matrix = tfidf.fit_transform(firms_df["tags"])
     cvs_matrix = tfidf.transform(cvs_df["tags"])
