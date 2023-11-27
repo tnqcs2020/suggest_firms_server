@@ -56,7 +56,7 @@ def preprocess_text(text):
     return text
 
 
-def preprocess_dataframe(df, column_name):
+def preprocess_dataFrame(df, column_name):
     df[column_name] = df[column_name].apply(preprocess_text)
     return df
 
@@ -102,7 +102,7 @@ def recommendations():
             "tags": tags,
         }
     )
-    firms_df = preprocess_dataframe(firm_data, "tags")
+    firms_df = preprocess_dataFrame(firm_data, "tags")
     firms_df["tags"] = firms_df["tags"].apply(stem)
 
     cvs_df = pd.DataFrame(
@@ -111,14 +111,14 @@ def recommendations():
             "tags": [stem(" ".join([cv["skill"], cv["wish"]])) for cv in cvs],
         }
     )
-    cvs_df = preprocess_dataframe(cvs_df, "tags")
+    cvs_df = preprocess_dataFrame(cvs_df, "tags")
 
     firms_matrix = tfidf.fit_transform(firms_df["tags"])
     cvs_matrix = tfidf.transform(cvs_df["tags"])
 
     user_item_matrix = linear_kernel(cvs_matrix, firms_matrix)
 
-    firms_sugggest = []
+    firms_suggest = []
     if len(cvs_df.index[cvs_df['userId'] == userId]) == 1:
         new_user_index = cvs_df.index[cvs_df['userId'] == userId][0]
         firms_matrix = tfidf.fit_transform(firms_df['tags'])
@@ -134,14 +134,14 @@ def recommendations():
         recommended_index = np.argsort(predicted_new_user[0])[::-1]
 
         for i in recommended_index:
-            firms_sugggest.append(
+            firms_suggest.append(
                 {
                     "firmId": firms[i]["firmId"],
                     "firmName": firms[i]["firmName"],
                     "similarityScore": predicted_new_user[0][i],
                 }
             )
-    return jsonify(firms_sugggest), {"Access-Control-Allow-Origin": "*"}
+    return jsonify(firms_suggest), {"Access-Control-Allow-Origin": "*"}
 
 
 if __name__ == "__main__":
