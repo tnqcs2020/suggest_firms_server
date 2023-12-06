@@ -6,9 +6,12 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from flask import Flask, request, jsonify
 from underthesea import word_tokenize
+from sklearn.neighbors import NearestNeighbors
 import string
-from nltk.stem.porter import PorterStemmer
-import numpy as np
+from nltk.stem import WordNetLemmatizer
+import nltk
+
+nltk.download("wordnet")
 
 app = Flask(__name__)
 
@@ -28,12 +31,12 @@ def readStopWords(fileName):
 stopWords = readStopWords("vietnamese-stopwords.txt")
 
 
-def getCVsData(cvs_ref):
-    cvs = []
-    for cv in cvs_ref:
-        formattedData = cv.to_dict()
-        cvs.append(formattedData)
-    return cvs
+def getProfilesData(profile_ref):
+    profiles = []
+    for profile in profile_ref:
+        formattedData = profile.to_dict()
+        profiles.append(formattedData)
+    return profiles
 
 
 def getFirmsData(firm_ref):
@@ -47,12 +50,13 @@ def getFirmsData(firm_ref):
 def preprocess_text(text):
     translator = str.maketrans("", "", string.punctuation)
     text = text.translate(translator)
-    # text = text.translate(translator).lower().split()
+
+    text = lemmatizer(text)
 
     text = word_tokenize(text, format="text").lower().split()
 
     noneStopWords = [word for word in text if word not in stopWords]
-    text = ' '.join(noneStopWords)
+    text = " ".join(noneStopWords)
     return text
 
 
@@ -61,14 +65,10 @@ def preprocess_dataFrame(df, column_name):
     return df
 
 
-ps = PorterStemmer()
-
-
-def stem(text):
-    y= []
-    for i in text.split():
-        y.append(ps.stem(i))
-    return ' '.join(y)
+def lemmatizer(text):
+    lemmatizer = WordNetLemmatizer()
+    lemmatized_tokens = [lemmatizer.lemmatize(token) for token in text.split()]
+    return " ".join(lemmatized_tokens)
 
 
 @app.route("/")
@@ -76,14 +76,14 @@ def hello_world():
     return "Hello World!"
 
 
-@app.route("/suggest", methods=["POST"])
-def recommendations():
+@app.route("/suggest-tfidf", methods=["POST"])
+def recommendationsTFIDF():
     userId = request.args.get("userId")
 
     db = firestore.client()
 
-    cvs_ref = db.collection("cvs").stream()
-    cvs = getCVsData(cvs_ref)
+    profile_ref = db.collection("profiles").stream()
+    profiles = getProfilesData(profile_ref)
 
     firm_ref = db.collection("firms").stream()
     firms = getFirmsData(firm_ref)
@@ -97,51 +97,148 @@ def recommendations():
 
     firm_data = pd.DataFrame(
         {
-            "firmId": [firm["firmId"] for firm in firms],
-            "firmName": [firm["firmName"] for firm in firms],
+            "firm_id": [firm["firmId"] for firm in firms],
+            "firm_name": [firm["firmName"] for firm in firms],
             "tags": tags,
+            "rate": [firm["tieuChi"] for firm in firms],
         }
     )
-    firms_df = preprocess_dataFrame(firm_data, "tags")
-    firms_df["tags"] = firms_df["tags"].apply(stem)
 
-    cvs_df = pd.DataFrame(
+    firms_df = preprocess_dataFrame(firm_data, "tags")
+
+    profiles_df = pd.DataFrame(
         {
-            "userId": [cv["userId"] for cv in cvs],
-            "tags": [stem(" ".join([cv["skill"], cv["wish"]])) for cv in cvs],
+            "user_id": [profile["userId"] for profile in profiles],
+            "tags": [profile["description"] for profile in profiles],
+            "rate": [
+                [
+                    profile["language"],
+                    profile["programming"],
+                    profile["skillGroup"],
+                    profile["machineAI"],
+                    profile["website"],
+                    profile["mobile"],
+                ]
+                for profile in profiles
+            ],
         }
     )
-    cvs_df = preprocess_dataFrame(cvs_df, "tags")
+
+    profiles_df = preprocess_dataFrame(profiles_df, "tags")
+
+    tfidf = TfidfVectorizer(stop_words="english")
 
     firms_matrix = tfidf.fit_transform(firms_df["tags"])
-    cvs_matrix = tfidf.transform(cvs_df["tags"])
+    users_matrix = tfidf.transform(
+        profiles_df.index[profiles_df["user_id"] == userId]["tags"]
+    )
+    users_firms_similarity = linear_kernel(users_matrix, firms_matrix)
 
-    user_item_matrix = linear_kernel(cvs_matrix, firms_matrix)
+    suggested_firms = [
+        {
+            "firmId": firms[j]["firmId"],
+            "firmName": firms[j]["firmName"],
+            "similarityScore": users_firms_similarity[0][j],
+        }
+        for j in range(len(firms))
+    ]
+    suggested_firms.sort(key=lambda x: x["similarityScore"], reverse=True)
 
-    firms_suggest = []
-    if len(cvs_df.index[cvs_df['userId'] == userId]) == 1:
-        new_user_index = cvs_df.index[cvs_df['userId'] == userId][0]
-        firms_matrix = tfidf.fit_transform(firms_df['tags'])
-        new_user_matrix = tfidf.transform([cvs_df['tags'][new_user_index]])
-        new_user_item_matrix = linear_kernel(new_user_matrix ,firms_matrix)
+    return jsonify(suggested_firms[0:5]), {"Access-Control-Allow-Origin": "*"}
 
-        new_user_similarity = linear_kernel(new_user_item_matrix, user_item_matrix )
 
-        predicted_new_user = np.dot(new_user_similarity, user_item_matrix) / np.sum(
-            np.abs(new_user_similarity), axis=1
-        ).reshape(-1, 1)
+@app.route("/suggest-knn", methods=["POST"])
+def recommendationsKNN():
+    userId = request.args.get("userId")
 
-        recommended_index = np.argsort(predicted_new_user[0])[::-1]
+    db = firestore.client()
 
-        for i in recommended_index:
-            firms_suggest.append(
+    profile_ref = db.collection("profiles").stream()
+    profiles = getProfilesData(profile_ref)
+
+    firm_ref = db.collection("firms").stream()
+    firms = getFirmsData(firm_ref)
+
+    tags = []
+    for firm in firms:
+        temp = []
+        for job in firm["listJob"]:
+            temp.append(job["jobName"])
+        tags.append(" ".join([firm["describe"], " ".join(temp)]))
+
+    firm_data = pd.DataFrame(
+        {
+            "firm_id": [firm["firmId"] for firm in firms],
+            "firm_name": [firm["firmName"] for firm in firms],
+            "tags": tags,
+            "rate": [firm["tieuChi"] for firm in firms],
+        }
+    )
+
+    firms_df = preprocess_dataFrame(firm_data, "tags")
+
+    profiles_df = pd.DataFrame(
+        {
+            "user_id": [profile["userId"] for profile in profiles],
+            "tags": [profile["description"] for profile in profiles],
+            "rate": [
+                [
+                    profile["language"],
+                    profile["programming"],
+                    profile["skillGroup"],
+                    profile["machineAI"],
+                    profile["website"],
+                    profile["mobile"],
+                ]
+                for profile in profiles
+            ],
+        }
+    )
+
+    profiles_df = preprocess_dataFrame(profiles_df, "tags")
+
+    firms_rate = pd.DataFrame(
+        {
+            "language": [(firms_df["rate"][i])[0] for i in range(len(firms_df))],
+            "programming": [(firms_df["rate"][i])[1] for i in range(len(firms_df))],
+            "skil_group": [(firms_df["rate"][i])[2] for i in range(len(firms_df))],
+            "machine_ai": [(firms_df["rate"][i])[3] for i in range(len(firms_df))],
+            "website": [(firms_df["rate"][i])[4] for i in range(len(firms_df))],
+            "mobile": [(firms_df["rate"][i])[5] for i in range(len(firms_df))],
+        }
+    )
+
+    list_rate_suggest_5 = []
+    list_rate_user = []
+
+    for i in range(len(profiles_df)):
+        if profiles_df["user_id"][i] == userId:
+            user_in = pd.DataFrame(
                 {
-                    "firmId": firms[i]["firmId"],
-                    "firmName": firms[i]["firmName"],
-                    "similarityScore": predicted_new_user[0][i],
+                    "language": [profiles_df["rate"][i][0]],
+                    "programming": [profiles_df["rate"][i][1]],
+                    "skil_group": [profiles_df["rate"][i][2]],
+                    "machine_ai": [profiles_df["rate"][i][3]],
+                    "website": [profiles_df["rate"][i][4]],
+                    "mobile": [profiles_df["rate"][i][5]],
                 }
             )
-    return jsonify(firms_suggest), {"Access-Control-Allow-Origin": "*"}
+
+            knn5 = NearestNeighbors(n_neighbors=5, algorithm="brute")
+            knn5.fit(firms_rate)
+            distances, indices = knn5.kneighbors(X=user_in)
+
+            suggested_firms = [
+                {
+                    "firmId": firms_df["firm_id"].iloc[indices.flatten()[j]],
+                    "firmName": firms_df["firm_name"].iloc[indices.flatten()[j]],
+                    "similarityScore": distances.flatten()[j],
+                }
+                for j in range(len(distances.flatten()))
+            ]
+            suggested_firms.sort(key=lambda x: x["similarityScore"], reverse=True)
+
+    return jsonify(suggested_firms), {"Access-Control-Allow-Origin": "*"}
 
 
 if __name__ == "__main__":
