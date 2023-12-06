@@ -4,9 +4,9 @@ nltk
 firebase_admin
 scikit-learn
 pandas
-numpy
 nltk
 flask
+string
 # blinker==1.6.3
 # CacheControl==0.13.1
 # cachetools==5.3.2
