@@ -130,7 +130,7 @@ def recommendationsTFIDF():
 
     firms_matrix = tfidf.fit_transform(firms_df["tags"])
     users_matrix = tfidf.transform(
-        profiles_df.index[profiles_df["user_id"] == userId]["tags"]
+        profiles_df.index[profiles_df["user_id"] == userId][0]["tags"]
     )
     users_firms_similarity = linear_kernel(users_matrix, firms_matrix)
 
@@ -236,7 +236,7 @@ def recommendationsKNN():
                 }
                 for j in range(len(distances.flatten()))
             ]
-            suggested_firms.sort(key=lambda x: x["similarityScore"], reverse=True)
+            suggested_firms.sort(key=lambda x: x["similarityScore"])
 
     return jsonify(suggested_firms), {"Access-Control-Allow-Origin": "*"}
 
