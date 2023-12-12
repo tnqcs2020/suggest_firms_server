@@ -130,7 +130,7 @@ def recommendationsTFIDF():
 
     firms_matrix = tfidf.fit_transform(firms_df["tags"])
     users_matrix = tfidf.transform(
-        profiles_df.loc[profiles_df["user_id"] == userId]["tags"][0]
+        profiles_df.loc[profiles_df["user_id"] == userId]["tags"]
     )
     users_firms_similarity = linear_kernel(users_matrix, firms_matrix)
 
@@ -208,9 +208,6 @@ def recommendationsKNN():
         }
     )
 
-    list_rate_suggest_5 = []
-    list_rate_user = []
-
     for i in range(len(profiles_df)):
         if profiles_df["user_id"][i] == userId:
             user_in = pd.DataFrame(
@@ -243,119 +240,3 @@ def recommendationsKNN():
 
 if __name__ == "__main__":
     app.run()
-
-# import firebase_admin
-# from firebase_admin import credentials
-# from firebase_admin import firestore
-# import pandas as pd
-# from google.cloud.firestore_v1.base_query import FieldFilter
-# from sklearn.feature_extraction.text import TfidfVectorizer
-# from sklearn.metrics.pairwise import cosine_similarity
-# from flask import Flask, request, jsonify
-# from underthesea import word_tokenize
-
-# app = Flask(__name__)
-
-# cred = credentials.Certificate("htqltttt-key.json")
-
-# firebase_admin.initialize_app(cred)
-
-
-# tfidf_vectorizer = TfidfVectorizer()
-
-
-# def getCVData(cv_ref):
-#     cvs = []
-#     for cv in cv_ref:
-#         formattedData = cv.to_dict()
-#         cvs.append(formattedData)
-#     return cvs
-
-
-# def getCVsData(cvs_ref):
-#     cvs = []
-#     for cv in cvs_ref:
-#         formattedData = cv.to_dict()
-#         cvs.append(formattedData)
-#     return cvs
-
-
-# def getFirmsData(firm_ref):
-#     firms = []
-#     for firm in firm_ref:
-#         formattedData = firm.to_dict()
-#         firms.append(formattedData)
-#     return firms
-
-
-# def readStopWords(fileName):
-#     with open(fileName, "r", encoding="utf-8") as file:
-#         stopWords = file.read().splitlines()
-#     return stopWords
-
-
-# stopWords = readStopWords("vietnamese-stopwords.txt")
-
-
-# def preprocess_text(text):
-#     import string
-
-#     translator = str.maketrans("", "", string.punctuation)
-#     text = text.translate(translator)
-
-#     text = word_tokenize(text, format="text").lower().split()
-
-#     noneStopWords = [word for word in text if word not in stopWords]
-#     text = " ".join(noneStopWords)
-
-#     print(text)
-#     return text
-
-
-# @app.route("/")
-# def hello_world():
-#     return "Hello World!"
-
-
-# @app.route("/suggest", methods=["POST"])
-# def recommendations():
-#     userId = request.args.get("userId")
-
-#     db = firestore.client()
-
-#     cvs_ref = db.collection("cvs").stream()
-#     cvs = getCVsData(cvs_ref)
-
-#     firm_ref = db.collection("firms").stream()
-#     firms = getFirmsData(firm_ref)
-
-#     suggested_firms = []
-
-#     for cv in cvs:
-#         if cv["userId"] == userId:
-#             for firm in firms:
-#                 for job in firm["listJob"]:
-#                     firm["describe"] = " ".join([firm["describe"], job["jobName"]])
-#             firm_fields = [preprocess_text(firm["describe"]) for firm in firms]
-#             tfidf_matrix_firms = tfidf_vectorizer.fit_transform(firm_fields)
-
-#             cv_skills = preprocess_text(" ".join([cv["skill"], cv["wish"]]))
-#             tfidf_matrix_cv = tfidf_vectorizer.transform([cv_skills])
-#             similarity = cosine_similarity(tfidf_matrix_cv, tfidf_matrix_firms)
-
-#             similarity_scores = similarity[0]
-#             suggested_firms = [
-#                 {
-#                     "firmId": firms[i]["firmId"],
-#                     "firmName": firms[i]["firmName"],
-#                     "similarityScore": similarity_scores[i],
-#                 }
-#                 for i in range(len(firms))
-#             ]
-#             suggested_firms.sort(key=lambda x: x["similarityScore"], reverse=True)
-
-#     return jsonify(suggested_firms), {"Access-Control-Allow-Origin": "*"}
-
-
-# if __name__ == "__main__":
-#     app.run()
