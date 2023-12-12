@@ -130,7 +130,7 @@ def recommendationsTFIDF():
 
     firms_matrix = tfidf.fit_transform(firms_df["tags"])
     users_matrix = tfidf.transform(
-        profiles_df.index[profiles_df["user_id"] == userId][0]["tags"]
+        profiles_df.loc[profiles_df["user_id"] == userId]["tags"][0]
     )
     users_firms_similarity = linear_kernel(users_matrix, firms_matrix)
 
